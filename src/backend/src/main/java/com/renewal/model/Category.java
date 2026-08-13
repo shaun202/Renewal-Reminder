@@ -1,4 +1,4 @@
-package backend.src;
+package com.renewal.model;
 
 /**
  * Category class
@@ -49,11 +49,11 @@ public class Category {
         this.icon = icon;
     }
 
-    public boolean isBuiltin() {
+    public boolean isBuiltIn() {
         return builtin;
     }
 
-    public void setBuiltin(boolean builtin) {
+    public void setBuiltIn(boolean builtin) {
         this.builtin = builtin;
     }
 }

@@ -1,4 +1,4 @@
-package backend.src;
+package com.renewal.model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -54,7 +54,7 @@ public class NotificationService {
 
         NotificationDto dto = new NotificationDto();
         dto.setItemId(item.getId());
-        dto.setTitle(item.getTitle());
+        dto.setTitle(item.getName());
         dto.setDeadline(item.getDeadline());
         dto.setDaysLeft(daysLeft);
         dto.setTimeLeftLabel(formatTimeLeft(daysLeft));

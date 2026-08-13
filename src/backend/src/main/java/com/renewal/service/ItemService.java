@@ -114,7 +114,7 @@ public class ItemService {
     }
 
     private void applyRequest(Item item, ItemRequest request) {
-        item.setTitle(request.getTitle().trim());
+        item.setName(request.getTitle().trim());
         item.setAmount(request.getAmount());
         item.setDeadline(request.getDeadline());
         item.setCategoryId(blankToNull(request.getCategoryId()));
@@ -137,7 +137,7 @@ public class ItemService {
     private ItemResponse toResponse(Item item) {
         ItemResponse response = new ItemResponse();
         response.setId(item.getId());
-        response.setTitle(item.getTitle());
+        response.setTitle(item.getName());
         response.setAmount(item.getAmount());
         response.setDeadline(item.getDeadline());
         response.setCategoryId(item.getCategoryId());
