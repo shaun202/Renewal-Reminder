@@ -1,4 +1,4 @@
-package com.example.renewalreminder;
+package com.renewal;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
