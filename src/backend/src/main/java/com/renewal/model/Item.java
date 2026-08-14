@@ -26,6 +26,12 @@ public class Item{
     private LocalDateTime updatedAt;
     // To catch the item's deadline offset
 
+    private String cycletype = "ONE_TIME";
+
+    private int customIntervalValue;
+    private String customIntervalUnit;
+    
+    private LocalDateTime LastCompletedDate;
     // Default constructor for more flexibility in creating an Item object
     public Item(){
     }
@@ -100,5 +106,37 @@ public class Item{
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getCycletype() {
+        return cycletype;
+    }
+
+    public void setCycletype(String cycletype) {
+        this.cycletype = cycletype;
+    }
+
+    public int getCustomIntervalValue() {
+        return customIntervalValue;
+    }
+
+    public void setCustomIntervalValue(int customIntervalValue) {
+        this.customIntervalValue = customIntervalValue;
+    }
+
+    public String getCustomIntervalUnit() {
+        return customIntervalUnit;
+    }
+
+    public void setCustomIntervalUnit(String customIntervalUnit) {
+        this.customIntervalUnit = customIntervalUnit;
+    }
+
+    public LocalDateTime getLastCompletedDate() {
+        return LastCompletedDate;
+    }
+
+    public void setLastCompletedDate(LocalDateTime lastCompletedDate) {
+        LastCompletedDate = lastCompletedDate;
     }
 }
