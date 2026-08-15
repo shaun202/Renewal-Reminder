@@ -31,6 +31,10 @@ public class ItemRequest {
     private String description;      // optional
     private List<Integer> reminderOffsets; // days-before values, e.g. [7, 1]
 
+    private String cycleType;
+    private Integer customeIntervalValue;
+    private String customIntervalUnit;
+
     public String getTitle() {
         return title;
     }
@@ -77,5 +81,29 @@ public class ItemRequest {
 
     public void setReminderOffsets(List<Integer> reminderOffsets) {
         this.reminderOffsets = reminderOffsets;
+    }
+
+    public String getCycleType() {
+        return cycleType;
+    }
+
+    public void setCycleType(String cycleType) {
+        this.cycleType = cycleType;
+    }
+
+    public Integer getCustomIntervalValue() {
+        return customeIntervalValue;
+    }
+
+    public void setCustomIntervalValue(Integer customIntervalValue) {
+        this.customeIntervalValue = customIntervalValue;
+    }
+
+    public String getCustomIntervalUnit() {
+        return customIntervalUnit;
+    }
+
+    public void setCustomIntervalUnit(String customIntervalUnit) {
+        this.customIntervalUnit = customIntervalUnit;
     }
 }
