@@ -1,6 +1,7 @@
 package com.renewal.dto;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -30,6 +31,13 @@ public class ItemResponse {
     private String warning;
     private List<Integer> suggestedAdditionalOffsets;
 
+    private String cycleType;
+    private Integer customIntervalValue;
+    private String customIntervalUnit;
+    private String cycleLabel;
+
+    private LocalDateTime lastCompleted;
+    
     public String getId() {
         return id;
     }
@@ -132,5 +140,45 @@ public class ItemResponse {
 
     public void setSuggestedAdditionalOffsets(List<Integer> suggestedAdditionalOffsets) {
         this.suggestedAdditionalOffsets = suggestedAdditionalOffsets;
+    }
+
+    public String getCycleType() {
+        return cycleType;
+    }
+
+    public void setCycleType(String cycleType) {
+        this.cycleType = cycleType;
+    }
+
+    public Integer getCustomIntervalValue() {
+        return customIntervalValue;
+    }
+
+    public void setCustomIntervalValue(Integer customIntervalValue) {
+        this.customIntervalValue = customIntervalValue;
+    }
+
+    public String getCustomIntervalUnit() {
+        return customIntervalUnit;
+    }
+
+    public void setCustomIntervalUnit(String customIntervalUnit) {
+        this.customIntervalUnit = customIntervalUnit;
+    }
+
+    public String getCycleLabel() {
+        return cycleLabel;
+    }
+
+    public void setCycleLabel(String cycleLabel) {
+        this.cycleLabel = cycleLabel;
+    }
+
+    public LocalDateTime getLastCompleted() {
+        return lastCompleted;
+    }
+
+    public void setLastCompleted(LocalDateTime lastCompleted) {
+        this.lastCompleted = lastCompleted;
     }
 }
