@@ -76,7 +76,10 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
         deadline: form.deadline,
         categoryId: form.categoryId || null,
         description: form.description,
-        reminderOffsets: form.reminderOffsets
+        reminderOffsets: form.reminderOffsets,
+        cycleType: form.cycleType,
+        customIntervalValue: form.cycleType === "CUSTOM" ? Number(form.customIntervalValue) : null,
+        customIntervalUnit: form.cycleType === "CUSTOM" ? form.customIntervalUnit : null
       };
 
       const response = saved?.id
@@ -97,12 +100,47 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
     }
   }
 
+  function goToStep2(e) {
+    e.preventDefault();
+    if (!form.title.trim() || form.amount === "" || !form.deadline) {
+      setFormError("Fill in the name, amount, and renewal date before continuing.");
+      return;
+    }
+    setFormError("");
+    setStep(2);
+  }
+
+  function goBackToStep1(e) {
+    e.preventDefault();
+    setFormError("");
+    setStep(1);
+  }
+
   async function handleDelete() {
     if (!saved?.id) return;
     if (!confirm(`Delete "${saved.title}"? This can't be undone.`)) return;
     await api.deleteItem(saved.id);
     onDeleted(saved.id);
     onClose();
+  }
+
+  async function handleMarkPaid() {
+    if (!saved?.id) return;
+    const nextStepText = saved.cycleType === "ONE_TIME"
+      ? "It's a one-time item, so it'll be removed."
+      : `It'll roll forward to its next due date (${saved.cycleLabel}).`;
+    if (!confirm(`Mark "${saved.title}" as paid?\n\n${nextStepText}`)) return;
+
+    setMarkingPaid(true);
+    try {
+      const result = await api.completeItem(saved.id);
+      onSaved(result.item); // triggers a reload either way
+      onClose();
+    } catch (err) {
+      setFormError(err.message || "Couldn't mark this item as paid.");
+    } finally {
+      setMarkingPaid(false);
+    }
   }
 
   function applySuggestion(offset) {
@@ -113,13 +151,16 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
     <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal__header">
-          <h2>{isEdit ? "Edit renewal" : "Add renewal"}</h2>
+          <h2>
+            {isEdit ? "Edit renewal" : "Add renewal"}
+            <span className="step-indicator"> · Step {step} of 2</span>
+          </h2>
           <button className="close-x" onClick={onClose} aria-label="Close">×</button>
         </div>
 
         {formError && <div className="form-error-banner">{formError}</div>}
 
-        {saved?.warning && (
+        {step === 2 && saved?.warning && (
           <div className="warning-banner">
             <div>
               <strong>Heads up —</strong> {saved.warning}
@@ -141,124 +182,197 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
           </div>
         )}
 
-        <form onSubmit={handleSave}>
-          <div className="field">
-            <label htmlFor="title">Name / Title</label>
-            <input
-              id="title"
-              type="text"
-              value={form.title}
-              onChange={(e) => update("title", e.target.value)}
-              placeholder="e.g. Netflix, Car Insurance, Domain: mysite.com"
-              required
-            />
-            {errors.title && <div className="field-error">{errors.title}</div>}
-          </div>
+        <form onSubmit={step === 1 ? goToStep2 : handleSave}>
+          {step === 1 && (
+            <>
+              <div className="field">
+                <label htmlFor="title">Name / Title</label>
+                <input
+                  id="title"
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => update("title", e.target.value)}
+                  placeholder="e.g. Netflix, Car Insurance, Domain: mysite.com"
+                  required
+                />
+                {errors.title && <div className="field-error">{errors.title}</div>}
+              </div>
 
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="amount">Amount</label>
-              <input
-                id="amount"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => update("amount", e.target.value)}
-                placeholder="0.00"
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="deadline">Renewal date</label>
-              <input
-                id="deadline"
-                type="date"
-                value={form.deadline}
-                onChange={(e) => update("deadline", e.target.value)}
-                required
-              />
-            </div>
-          </div>
+              <div className="field-row">
+                <div className="field">
+                  <label htmlFor="amount">Amount</label>
+                  <input
+                    id="amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.amount}
+                    onChange={(e) => update("amount", e.target.value)}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="deadline">Renewal date</label>
+                  <input
+                    id="deadline"
+                    type="date"
+                    value={form.deadline}
+                    onChange={(e) => update("deadline", e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
 
-          <div className="field">
-            <label htmlFor="category">Category (optional)</label>
-            <select id="category" value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)}>
-              <option value="">No category</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-              ))}
-            </select>
-            <button type="button" className="btn-text" onClick={onManageCategories} style={{ marginTop: 6, padding: 0 }}>
-              Manage categories
-            </button>
-          </div>
-
-          <div className="field">
-            <label htmlFor="description">Description / Notes (optional)</label>
-            <textarea
-              id="description"
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-              placeholder="Any details worth remembering..."
-            />
-          </div>
-
-          <div className="field">
-            <label>Remind me before it renews</label>
-            <div className="offset-chips">
-              {QUICK_OFFSETS.map((o) => (
-                <button
-                  type="button"
-                  key={o}
-                  className={`offset-chip ${form.reminderOffsets.includes(o) ? "active" : ""}`}
-                  onClick={() => toggleOffset(o)}
-                >
-                  {o} {o === 1 ? "day" : "days"} before
+              <div className="field">
+                <label htmlFor="category">Category (optional)</label>
+                <select id="category" value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)}>
+                  <option value="">No category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                  ))}
+                </select>
+                <button type="button" className="btn-text" onClick={onManageCategories} style={{ marginTop: 6, padding: 0 }}>
+                  Manage categories
                 </button>
-              ))}
-              {form.reminderOffsets
-                .filter((o) => !QUICK_OFFSETS.includes(o))
-                .map((o) => (
-                  <button
-                    type="button"
-                    key={o}
-                    className="offset-chip active"
-                    onClick={() => toggleOffset(o)}
-                  >
-                    {o} {o === 1 ? "day" : "days"} before
-                    <span className="offset-chip-remove">×</span>
-                  </button>
-                ))}
-            </div>
-            <div className="add-offset-row">
-              <input
-                type="number"
-                min="0"
-                placeholder="Custom"
-                value={customOffset}
-                onChange={(e) => setCustomOffset(e.target.value)}
-              />
-              <button type="button" className="btn-ghost btn" onClick={addCustomOffset}>Add</button>
-            </div>
-            <div className="field-hint">Tap a chip to toggle it. You can set more than one reminder per item.</div>
-          </div>
+              </div>
 
-          <div className="modal__footer">
-            <div>
-              {isEdit && (
-                <button type="button" className="btn-danger-text" onClick={handleDelete}>
-                  Delete
-                </button>
+              <div className="field">
+                <label htmlFor="description">Description / Notes (optional)</label>
+                <textarea
+                  id="description"
+                  value={form.description}
+                  onChange={(e) => update("description", e.target.value)}
+                  placeholder="Any details worth remembering..."
+                />
+              </div>
+
+              <div className="field">
+                <label>Remind me before it renews</label>
+                <div className="offset-chips">
+                  {QUICK_OFFSETS.map((o) => (
+                    <button
+                      type="button"
+                      key={o}
+                      className={`offset-chip ${form.reminderOffsets.includes(o) ? "active" : ""}`}
+                      onClick={() => toggleOffset(o)}
+                    >
+                      {o} {o === 1 ? "day" : "days"} before
+                    </button>
+                  ))}
+                  {form.reminderOffsets
+                    .filter((o) => !QUICK_OFFSETS.includes(o))
+                    .map((o) => (
+                      <button
+                        type="button"
+                        key={o}
+                        className="offset-chip active"
+                        onClick={() => toggleOffset(o)}
+                      >
+                        {o} {o === 1 ? "day" : "days"} before
+                        <span className="offset-chip-remove">×</span>
+                      </button>
+                    ))}
+                </div>
+                <div className="add-offset-row">
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Custom"
+                    value={customOffset}
+                    onChange={(e) => setCustomOffset(e.target.value)}
+                  />
+                  <button type="button" className="btn-ghost btn" onClick={addCustomOffset}>Add</button>
+                </div>
+                <div className="field-hint">Tap a chip to toggle it. You can set more than one reminder per item.</div>
+              </div>
+
+              <div className="modal__footer">
+                <div>
+                  {isEdit && (
+                    <button type="button" className="btn-danger-text" onClick={handleDelete}>
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div className="modal__footer-right">
+                  <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Next</button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className="field">
+                <label>How often does this renew?</label>
+                <div className="cycle-options">
+                  {CYCLE_OPTIONS.map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      className={`cycle-option ${form.cycleType === opt.value ? "active" : ""}`}
+                      onClick={() => update("cycleType", opt.value)}
+                    >
+                      <span className="cycle-option__label">{opt.label}</span>
+                      <span className="cycle-option__hint">{opt.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {form.cycleType === "CUSTOM" && (
+                <div className="field-row">
+                  <div className="field">
+                    <label htmlFor="customValue">Every</label>
+                    <input
+                      id="customValue"
+                      type="number"
+                      min="1"
+                      value={form.customIntervalValue}
+                      onChange={(e) => update("customIntervalValue", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="customUnit">Unit</label>
+                    <select
+                      id="customUnit"
+                      value={form.customIntervalUnit}
+                      onChange={(e) => update("customIntervalUnit", e.target.value)}
+                    >
+                      {INTERVAL_UNITS.map((u) => (
+                        <option key={u.value} value={u.value}>{u.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               )}
-            </div>
-            <div className="modal__footer-right">
-              <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
+
+              <div className="modal__footer">
+                <div>
+                  {isEdit && (
+                    <button
+                      type="button"
+                      className="btn-text"
+                      onClick={handleMarkPaid}
+                      disabled={markingPaid}
+                      style={{ padding: 0 }}
+                    >
+                      {markingPaid ? "Working..." : "✓ Mark as paid"}
+                    </button>
+                  )}
+                </div>
+                <div className="modal__footer-right">
+                  <button type="button" className="btn btn-ghost" onClick={goBackToStep1}>Back</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </form>
       </div>
     </div>
