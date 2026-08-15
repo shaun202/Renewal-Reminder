@@ -30,6 +30,7 @@ export const api = {
   createItem: (payload) => request("/items", { method: "POST", body: JSON.stringify(payload) }),
   updateItem: (id, payload) => request(`/items/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteItem: (id) => request(`/items/${id}`, { method: "DELETE" }),
+  completeItem: (id) => request(`/items/${id}/complete`, { method: "POST" }),
 
   // Categories
   getCategories: () => request("/categories"),

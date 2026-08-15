@@ -53,6 +53,21 @@ export default function App() {
     if (found) setActiveItem(found);
   }
 
+  async function handleMarkPaid(item) {
+    const nextStep = item.cycleType === "ONE_TIME"
+      ? "It's a one-time item, so it'll be removed from the list."
+      : `It'll roll forward to its next due date (${item.cycleLabel}).`;
+
+    if (!confirm(`Mark "${item.title}" as paid?\n\n${nextStep}`)) return;
+
+    try {
+      await api.completeItem(item.id);
+      loadAll();
+    } catch (err) {
+      alert(err.message || "Couldn't mark this item as paid.");
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -74,7 +89,7 @@ export default function App() {
       )}
 
       {!loading && !loadError && (
-        <ItemList items={items} onSelect={(item) => setActiveItem(item)} />
+        <ItemList items={items} onSelect={(item) => setActiveItem(item)} onMarkPaid={handleMarkPaid} />
       )}
 
       {activeItem && (

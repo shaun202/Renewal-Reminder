@@ -3,7 +3,7 @@ import CountdownRing from "./CountdownRing.jsx";
 
 const currency = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
 
-export default function ItemCard({ item, onClick }) {
+export default function ItemCard({ item, onClick, onMarkPaid }) {
   return (
     <div className="item-card" onClick={onClick}>
       <CountdownRing daysLeft={item.daysLeft} />
@@ -18,11 +18,23 @@ export default function ItemCard({ item, onClick }) {
             <span className="tag">{item.categoryIcon} {item.categoryName}</span>
           )}
           <span className="tag">{item.timeLeftLabel}</span>
+          <span className="tag">🔁 {item.cycleLabel}</span>
         </div>
 
         {item.description && <p className="item-card__desc">{item.description}</p>}
 
         {item.warning && <div className="item-card__warning">⚠ {item.warning}</div>}
+
+        <button
+          type="button"
+          className="btn btn-ghost mark-paid-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarkPaid(item);
+          }}
+        >
+          ✓ Mark as paid
+        </button>
       </div>
     </div>
   );

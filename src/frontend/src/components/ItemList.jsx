@@ -1,7 +1,7 @@
 import React from "react";
 import ItemCard from "./ItemCard.jsx";
 
-export default function ItemList({ items, onSelect }) {
+export default function ItemList({ items, onSelect, onMarkPaid }) {
   if (items.length === 0) {
     return (
       <div className="empty-state">
@@ -14,7 +14,7 @@ export default function ItemList({ items, onSelect }) {
   return (
     <div className="item-grid">
       {items.map((item) => (
-        <ItemCard key={item.id} item={item} onClick={() => onSelect(item)} />
+        <ItemCard key={item.id} item={item} onClick={() => onSelect(item)} onMarkPaid={onMarkPaid} />
       ))}
     </div>
   );

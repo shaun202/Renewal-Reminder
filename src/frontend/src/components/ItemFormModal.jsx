@@ -3,6 +3,20 @@ import { api } from "../api.js";
 
 const QUICK_OFFSETS = [1, 3, 7, 14, 30];
 
+const CYCLE_OPTIONS = [
+  { value: "ONE_TIME", label: "One-time", hint: "Final payment — no need to renew or pay again." },
+  { value: "MONTHLY", label: "Monthly", hint: "Renews every month." },
+  { value: "YEARLY", label: "Yearly", hint: "Renews every year." },
+  { value: "CUSTOM", label: "Custom", hint: "Set your own interval." }
+];
+
+const INTERVAL_UNITS = [
+  { value: "DAYS", label: "Days" },
+  { value: "WEEKS", label: "Weeks" },
+  { value: "MONTHS", label: "Months" },
+  { value: "YEARS", label: "Years" }
+];
+
 function toFormState(item) {
   return {
     title: item?.title ?? "",
@@ -10,18 +24,23 @@ function toFormState(item) {
     deadline: item?.deadline ?? "",
     categoryId: item?.categoryId ?? "",
     description: item?.description ?? "",
-    reminderOffsets: item?.reminderOffsets ?? [7]
+    reminderOffsets: item?.reminderOffsets ?? [7],
+    cycleType: item?.cycleType ?? "ONE_TIME",
+    customIntervalValue: item?.customIntervalValue ?? 1,
+    customIntervalUnit: item?.customIntervalUnit ?? "MONTHS"
   };
 }
 
 export default function ItemFormModal({ item, categories, onClose, onSaved, onDeleted, onManageCategories }) {
   const isEdit = Boolean(item?.id);
+  const [step, setStep] = useState(1); // 1 = details, 2 = renewal cycle + save
   const [form, setForm] = useState(() => toFormState(item));
   const [customOffset, setCustomOffset] = useState("");
   const [saved, setSaved] = useState(item?.id ? item : null); // server response, drives the warning banner
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
