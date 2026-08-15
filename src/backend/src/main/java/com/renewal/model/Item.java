@@ -26,7 +26,7 @@ public class Item{
     private LocalDateTime updatedAt;
     // To catch the item's deadline offset
 
-    private String cycletype = "ONE_TIME";
+    private String cycleType = "ONE_TIME";
 
     private int customIntervalValue;
     private String customIntervalUnit;
@@ -108,12 +108,12 @@ public class Item{
         this.updatedAt = updatedAt;
     }
 
-    public String getCycletype() {
-        return cycletype;
+    public String getCycleType() {
+        return cycleType;
     }
 
-    public void setCycletype(String cycletype) {
-        this.cycletype = cycletype;
+    public void setCycleType(String cycleType) {
+        this.cycleType = cycleType;
     }
 
     public int getCustomIntervalValue() {
