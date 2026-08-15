@@ -1,5 +1,6 @@
 package com.renewal.controller;
-
+ 
+import com.renewal.dto.CompleteItemResponse;
 import com.renewal.dto.ItemRequest;
 import com.renewal.dto.ItemResponse;
 import com.renewal.service.ItemService;
@@ -7,7 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+ 
 import java.util.List;
 
 @RestController
@@ -52,5 +53,10 @@ public class ItemController {
     public ResponseEntity<Void> delete(@PathVariable String id) {
         itemService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/complete")
+    public CompleteItemResponse complete(@PathVariable String id) {
+        return itemService.complete(id);
     }
 }
