@@ -1,16 +1,5 @@
 package com.renewal.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.renewal.dto.ItemRequest;
-import com.renewal.dto.ItemResponse;
-import com.renewal.dto.NotFoundException;
-import com.renewal.model.Category;
-import com.renewal.model.Item;
-import com.renewal.store.JsonStore;
-import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,7 +7,22 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.renewal.dto.CompleteItemResponse;
+import com.renewal.dto.ItemRequest;
+import com.renewal.dto.ItemResponse;
+import com.renewal.dto.NotFoundException;
+import com.renewal.model.Category;
+import com.renewal.model.Item;
+import com.renewal.store.JsonStore;
+
+import jakarta.annotation.PostConstruct;
 
 /**
  * ItemService class to handle item-related operations.
@@ -35,6 +39,9 @@ public class ItemService {
     // deadline, we warn the user that they're cutting it close.
     private static final int CLOSE_THRESHOLD_DAYS = 3;
     private static final List<Integer> SUGGESTION_POOL = List.of(14, 7, 3, 1);
+
+     private static final Set<String> VALID_CYCLE_TYPES = Set.of("ONE_TIME", "MONTHLY", "YEARLY", "CUSTOM");
+    private static final Set<String> VALID_INTERVAL_UNITS = Set.of("DAYS", "WEEKS", "MONTHS", "YEARS");
 
     @Value("${app.data.dir}")
     private String dataDir;
@@ -128,13 +135,7 @@ public class ItemService {
         item.setReminderOffsets(offsets);
     }
 
-    private void validateBusinessRules(ItemRequest request) {
-        if (request.getCategoryId() != null && !request.getCategoryId().isBlank()) {
-            categoryService.getById(request.getCategoryId()); // throws NotFoundException if invalid
-        }
-    }
-
-    private ItemResponse toResponse(Item item) {
+       private ItemResponse toResponse(Item item) {
         ItemResponse response = new ItemResponse();
         response.setId(item.getId());
         response.setTitle(item.getName());
@@ -143,7 +144,7 @@ public class ItemService {
         response.setCategoryId(item.getCategoryId());
         response.setDescription(item.getDescription());
         response.setReminderOffsets(item.getReminderOffsets());
-
+ 
         if (item.getCategoryId() != null) {
             try {
                 Category category = categoryService.getById(item.getCategoryId());
@@ -153,11 +154,17 @@ public class ItemService {
                 // category was deleted after this item was tagged with it - just omit it
             }
         }
-
+ 
         long daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), item.getDeadline());
         response.setDaysLeft(daysLeft);
         response.setTimeLeftLabel(formatTimeLeft(daysLeft));
-
+ 
+        response.setCycleType(item.getCycleType());
+        response.setCustomIntervalValue(item.getCustomIntervalValue());
+        response.setCustomIntervalUnit(item.getCustomIntervalUnit());
+        response.setCycleLabel(cycleLabel(item));
+        response.setLastCompleted(item.getLastCompletedDate());
+ 
         applySafetyCheck(response, item.getReminderOffsets());
         return response;
     }
@@ -209,5 +216,86 @@ public class ItemService {
 
     private String blankToNull(String value) {
         return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
+    public CompleteItemResponse complete(String id){
+        List<Item> all = store.getAll();
+        Item item = all.stream()
+                .filter(i -> i.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Item not found: " + id));
+        
+        if ("ONE_TIME".equals(item.getCycleType())){
+            all.remove(item);
+            store.writeAll(all);
+            return new CompleteItemResponse(true, null);
+        }
+         item.setDeadline(nextDeadline(item));
+        item.setLastCompletedDate(LocalDateTime.now());
+        item.setUpdatedAt(LocalDateTime.now());
+        store.writeAll(all);
+        return new CompleteItemResponse(false, toResponse(item));
+    }
+ 
+    private String cycleLabel(Item item) {
+        return switch (item.getCycleType() == null ? "ONE_TIME" : item.getCycleType()) {
+            case "MONTHLY" -> "Monthly";
+            case "YEARLY" -> "Yearly";
+            case "CUSTOM" -> {
+                int value = item.getCustomIntervalValue();
+                String unit = item.getCustomIntervalUnit() == null ? "DAYS" : item.getCustomIntervalUnit();
+                String unitLabel = switch (unit) {
+                    case "DAYS" -> value == 1 ? "day" : "days";
+                    case "WEEKS" -> value == 1 ? "week" : "weeks";
+                    case "MONTHS" -> value == 1 ? "month" : "months";
+                    case "YEARS" -> value == 1 ? "year" : "years";
+                    default -> unit.toLowerCase();
+                };
+                yield "Every " + value + " " + unitLabel;
+            }
+            default -> "One-time";
+        };
+    }
+
+        private LocalDate nextDeadline(Item item) {
+        LocalDate current = item.getDeadline();
+        return switch (item.getCycleType()) {
+            case "MONTHLY" -> current.plusMonths(1);
+            case "YEARLY" -> current.plusYears(1);
+            case "CUSTOM" -> switch (item.getCustomIntervalUnit()) {
+                case "DAYS" -> current.plusDays(item.getCustomIntervalValue());
+                case "WEEKS" -> current.plusWeeks(item.getCustomIntervalValue());
+                case "MONTHS" -> current.plusMonths(item.getCustomIntervalValue());
+                case "YEARS" -> current.plusYears(item.getCustomIntervalValue());
+                default -> throw new IllegalArgumentException("Unknown interval unit: " + item.getCustomIntervalUnit());
+            };
+            default -> throw new IllegalArgumentException("Cannot roll forward a one-time item");
+        };
+    }
+
+    private void validateBusinessRules(ItemRequest request) {
+        if (request.getCategoryId() != null && !request.getCategoryId().isBlank()) {
+            categoryService.getById(request.getCategoryId()); // throws NotFoundException if invalid
+        }
+ 
+        String cycleType = request.getCycleType() == null || request.getCycleType().isBlank()
+                ? "ONE_TIME"
+                : request.getCycleType().trim().toUpperCase();
+ 
+        if (!VALID_CYCLE_TYPES.contains(cycleType)) {
+            throw new IllegalArgumentException(
+                    "cycleType must be one of " + VALID_CYCLE_TYPES + ", got: " + request.getCycleType());
+        }
+ 
+        if ("CUSTOM".equals(cycleType)) {
+            if (request.getCustomIntervalValue() == null || request.getCustomIntervalValue() < 1) {
+                throw new IllegalArgumentException("A custom cycle needs a positive interval (e.g. every 45 days)");
+            }
+            String unit = request.getCustomIntervalUnit() == null ? "" : request.getCustomIntervalUnit().trim().toUpperCase();
+            if (!VALID_INTERVAL_UNITS.contains(unit)) {
+                throw new IllegalArgumentException(
+                        "customIntervalUnit must be one of " + VALID_INTERVAL_UNITS + ", got: " + request.getCustomIntervalUnit());
+            }
+        }
     }
 }
