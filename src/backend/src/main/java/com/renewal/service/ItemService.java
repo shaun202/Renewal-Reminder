@@ -219,7 +219,7 @@ public class ItemService {
     }
 
     public CompleteItemResponse complete(String id){
-        List<Item> all = store.getAll();
+        List<Item> all = store.readAll();
         Item item = all.stream()
                 .filter(i -> i.getId().equals(id))
                 .findFirst()
