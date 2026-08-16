@@ -133,6 +133,13 @@ public class ItemService {
         offsets.removeIf(o -> o == null || o < 0);
         offsets.sort(Comparator.reverseOrder());
         item.setReminderOffsets(offsets);
+
+        String cycleType = request.getCycleType() == null || request.getCycleType().isBlank()
+                ? "ONE_TIME"
+                : request.getCycleType().trim().toUpperCase();
+        item.setCycleType(cycleType);
+        item.setCustomIntervalValue(request.getCustomIntervalValue() == null ? 0 : request.getCustomIntervalValue());
+        item.setCustomIntervalUnit(request.getCustomIntervalUnit() == null ? "DAYS" : request.getCustomIntervalUnit().trim().toUpperCase());
     }
 
        private ItemResponse toResponse(Item item) {
