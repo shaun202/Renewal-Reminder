@@ -52,7 +52,7 @@ export default function CategoryManagerModal({ categories, onClose, onChanged })
   }
 
   return (
-    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal__header">
           <h2>Categories</h2>

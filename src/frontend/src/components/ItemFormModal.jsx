@@ -41,8 +41,10 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
+  const [justSaved, setJustSaved] = useState(false); // shows an explicit "Saved" confirmation so it's never ambiguous
 
   function update(field, value) {
+    setJustSaved(false);
     setForm((f) => ({ ...f, [field]: value }));
   }
 
@@ -64,23 +66,28 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
     setCustomOffset("");
   }
 
+  function buildPayload() {
+    return {
+      title: form.title,
+      amount: form.amount === "" ? null : Number(form.amount),
+      deadline: form.deadline,
+      categoryId: form.categoryId || null,
+      description: form.description,
+      reminderOffsets: form.reminderOffsets,
+      cycleType: form.cycleType,
+      customIntervalValue: form.cycleType === "CUSTOM" ? Number(form.customIntervalValue) : null,
+      customIntervalUnit: form.cycleType === "CUSTOM" ? form.customIntervalUnit : null
+    };
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setErrors({});
     setFormError("");
+    setJustSaved(false);
     setSaving(true);
     try {
-      const payload = {
-        title: form.title,
-        amount: form.amount === "" ? null : Number(form.amount),
-        deadline: form.deadline,
-        categoryId: form.categoryId || null,
-        description: form.description,
-        reminderOffsets: form.reminderOffsets,
-        cycleType: form.cycleType,
-        customIntervalValue: form.cycleType === "CUSTOM" ? Number(form.customIntervalValue) : null,
-        customIntervalUnit: form.cycleType === "CUSTOM" ? form.customIntervalUnit : null
-      };
+      const payload = buildPayload();
 
       const response = saved?.id
         ? await api.updateItem(saved.id, payload)
@@ -88,6 +95,7 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
 
       setSaved(response);
       onSaved(response);
+      setJustSaved(true);
 
       // If everything looks good (no warning), close right away.
       if (!response.warning) {
@@ -126,15 +134,36 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
 
   async function handleMarkPaid() {
     if (!saved?.id) return;
-    const nextStepText = saved.cycleType === "ONE_TIME"
-      ? "It's a one-time item, so it'll be removed."
-      : `It'll roll forward to its next due date (${saved.cycleLabel}).`;
-    if (!confirm(`Mark "${saved.title}" as paid?\n\n${nextStepText}`)) return;
 
+    // Persist whatever's currently selected on screen FIRST. Without this,
+    // clicking "Mark as paid" right after picking a new cycle (without
+    // clicking Save first) would act on the old, already-saved cycle instead
+    // of what's actually showing in the form.
     setMarkingPaid(true);
+    setFormError("");
+    let current;
     try {
-      const result = await api.completeItem(saved.id);
-      onSaved(result.item); // triggers a reload either way
+      current = await api.updateItem(saved.id, buildPayload());
+      setSaved(current);
+    } catch (err) {
+      setFormError(err.message || "Couldn't save your changes before marking this as paid.");
+      setMarkingPaid(false);
+      return;
+    }
+
+    const nextStepText = current.cycleType === "ONE_TIME"
+      ? "It's a one-time item, so it'll be removed."
+      : `It'll roll forward to its next due date (${current.cycleLabel}).`;
+
+    if (!confirm(`Mark "${current.title}" as paid?\n\n${nextStepText}`)) {
+      setMarkingPaid(false);
+      onSaved(current); // the payload update above is real, so refresh the list behind the modal too
+      return;
+    }
+
+    try {
+      const result = await api.completeItem(current.id);
+      onSaved(result.item);
       onClose();
     } catch (err) {
       setFormError(err.message || "Couldn't mark this item as paid.");
@@ -148,7 +177,7 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
   }
 
   return (
-    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal__header">
           <h2>
@@ -159,6 +188,12 @@ export default function ItemFormModal({ item, categories, onClose, onSaved, onDe
         </div>
 
         {formError && <div className="form-error-banner">{formError}</div>}
+
+        {step === 2 && justSaved && (
+          <div className="success-banner">
+            ✓ Saved — this now renews: <strong>{saved?.cycleLabel}</strong>
+          </div>
+        )}
 
         {step === 2 && saved?.warning && (
           <div className="warning-banner">

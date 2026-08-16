@@ -4,6 +4,12 @@ import ItemList from "./components/ItemList.jsx";
 import ItemFormModal from "./components/ItemFormModal.jsx";
 import CategoryManagerModal from "./components/CategoryManagerModal.jsx";
 import NotificationBell from "./components/NotificationBell.jsx";
+import {
+  isNotificationSupported,
+  getPermission,
+  requestNotificationPermission,
+  notifyNewReminders
+} from "./notifications.js";
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -11,9 +17,12 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [notifPermission, setNotifPermission] = useState(getPermission());
 
   const [activeItem, setActiveItem] = useState(null); // object = editing, "new" = creating, null = closed
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+
+  const modalOpen = activeItem !== null || showCategoryManager;
 
   const loadAll = useCallback(async () => {
     try {
@@ -26,6 +35,7 @@ export default function App() {
       setCategories(categoriesRes);
       setNotifications(notifsRes);
       setLoadError("");
+      notifyNewReminders(notifsRes);
     } catch (err) {
       setLoadError(err.message || "Couldn't reach the server.");
     } finally {
@@ -35,10 +45,20 @@ export default function App() {
 
   useEffect(() => {
     loadAll();
-    // Keep the notification bell fresh without needing a full page reload.
+  }, [loadAll]);
+
+  useEffect(() => {
+    // Pause background polling while a modal is open, so a form the user is
+    // actively filling in never gets fresh props pushed into it mid-edit.
+    if (modalOpen) return;
     const interval = setInterval(loadAll, 60_000);
     return () => clearInterval(interval);
-  }, [loadAll]);
+  }, [loadAll, modalOpen]);
+
+  async function handleEnableNotifications() {
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+  }
 
   function handleSaved() {
     loadAll();
@@ -53,6 +73,21 @@ export default function App() {
     if (found) setActiveItem(found);
   }
 
+  async function handleMarkPaid(item) {
+    const nextStep = item.cycleType === "ONE_TIME"
+      ? "It's a one-time item, so it'll be removed from the list."
+      : `It'll roll forward to its next due date (${item.cycleLabel}).`;
+
+    if (!confirm(`Mark "${item.title}" as paid?\n\n${nextStep}`)) return;
+
+    try {
+      await api.completeItem(item.id);
+      loadAll();
+    } catch (err) {
+      alert(err.message || "Couldn't mark this item as paid.");
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -60,6 +95,11 @@ export default function App() {
           Renewals <span className="eyebrow">tracker</span>
         </h1>
         <div className="topbar__actions">
+          {isNotificationSupported() && notifPermission === "default" && (
+            <button className="btn btn-ghost" onClick={handleEnableNotifications}>
+              🔔 Enable notifications
+            </button>
+          )}
           <NotificationBell notifications={notifications} onSelect={openItemById} />
           <button className="btn btn-primary" onClick={() => setActiveItem("new")}>
             + Add item
@@ -74,11 +114,12 @@ export default function App() {
       )}
 
       {!loading && !loadError && (
-        <ItemList items={items} onSelect={(item) => setActiveItem(item)} />
+        <ItemList items={items} onSelect={(item) => setActiveItem(item)} onMarkPaid={handleMarkPaid} />
       )}
 
       {activeItem && (
         <ItemFormModal
+          key={activeItem === "new" ? "new" : activeItem.id}
           item={activeItem === "new" ? null : activeItem}
           categories={categories}
           onClose={() => setActiveItem(null)}

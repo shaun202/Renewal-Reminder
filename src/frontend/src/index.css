@@ -430,6 +430,61 @@ button {
   margin: 0;
 }
 
+.step-indicator {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
+/* ---------- Cycle picker (step 2) ---------- */
+
+.cycle-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.cycle-option {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cycle-option:hover {
+  border-color: var(--primary);
+}
+
+.cycle-option.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.cycle-option__label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.cycle-option__hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.mark-paid-btn {
+  margin-top: 12px;
+  width: 100%;
+  justify-content: center;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
 .close-x {
   background: transparent;
   border: none;
@@ -582,6 +637,16 @@ button {
   margin-bottom: 16px;
 }
 
+.success-banner {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
 .modal__footer {
   display: flex;
   justify-content: space-between;
@@ -662,5 +727,8 @@ button {
     right: 12px;
     left: 12px;
     width: auto;
+  }
+  .cycle-options {
+    grid-template-columns: 1fr;
   }
 }
